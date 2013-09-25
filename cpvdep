@@ -61,6 +61,9 @@ function copy_with_dependencies {
 		then
 			# find the first file that matches the name
 			file=$(find . -name ${file} -type f -print | head -n 1)
+
+			# zero length if file not found
+			test -z "${file}" && continue
 		fi
 
 		# checkout if file is in set that thus has been copied already
