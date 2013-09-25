@@ -1,0 +1,75 @@
+#!/bin/bash
+set -o errexit
+
+declare -A fileset
+
+
+function print_usage() {
+	echo "
+Usage: $0 SOURCE DESTINATION
+
+Description: Copy Verilog source file and all 'include' dependencies.
+
+Arguments:
+ SOURCE
+	Full path and file name to the verilog source file.
+
+ DESTINATION
+	Destination directory into which the files will be copied.
+"
+}
+
+
+# input argument checks
+if [ $# != 2 ]
+then :
+	echo "ERROR incorrect number of arguments"
+	exit 1
+elif [ ! -r $1 ]
+then :
+	echo "ERROR source file could not be found \"${1}\""
+	exit 1
+elif [ ! -d $2 ]
+then :
+	echo "ERROR destination dir could not be found \"${2}\""
+	exit 1
+fi
+
+SRC=$1
+DST=$2
+
+function included_files {
+	# limitations in regex, only one file name per include
+	# limitations in regex, file name cannot have double quote char
+
+	grep -o '^\s*`include\s*\".*\"' ${1} | awk -F\" '{print $(NF-1)}'
+}
+
+
+# argument assumed to be full path name
+function copy_with_dependencies {
+	# put file into set
+	fileset[$(basename ${1})]=${1}
+
+	# copy file to destination
+	cp -vn "${1}" "${DST}" || { echo "ERROR unable to copy file ${1}" ; exit 1; }
+
+	for file in $(included_files ${1})
+	do
+		# does the file exist in working dir
+		if [ ! -f ${file} ]
+		then
+			# find the first file that matches the name
+			file=$(find . -name ${file} -type f -print | head -n 1)
+		fi
+
+		# checkout if file is in set that thus has been copied already
+		if [ ! ${fileset[$(basename ${file})]} ]
+		then :
+			# since has not been copied, call copy_with_dependencies on it
+			copy_with_dependencies ${file}
+		fi
+	done
+}
+
+copy_with_dependencies $SRC
