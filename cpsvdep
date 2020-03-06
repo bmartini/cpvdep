@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -o errexit
+
+
+function print_usage() {
+    echo "
+Usage:
+    $0 [OPTION] [<explicit_dependencies>.(sv|v)] <filename>.(sv|v) DESTINATION
+
+Description:
+    Script to copy a SystemVerilog file and its dependencies. The script uses
+    'Verilator' as its parser back-end to determine the dependent files.
+
+Options:
+    -h    Print this help info
+    -I    Directory to search for includes
+
+Arguments:
+    The script takes two mandatory arguments. The first is the path name
+    location of the SystemVerilog/Verilog file to be copied. The second is the
+    destination directory into which the files will be copied. Optionally, an
+    explicit list of source files may be included before the first mandatory
+    argument. These files will always be copied to the DESTINATION.
+"
+}
+
+
+IDIR="-I."
+while getopts 'hI:' x; do
+    case "$x" in
+        I) IDIR=${IDIR}" -I${OPTARG}";;
+        h) print_usage; exit 2 ;;
+        ?) print_usage; exit 2 ;;
+    esac
+done
+
+
+# sanitize project argument
+shift $(($OPTIND - 1))
+if [ $# -lt 1 ]
+then :
+    echo "ERROR: To few arguments"
+    exit 1
+elif [ ! -f  "${BASH_ARGV[1]}" ]
+then :
+	echo "ERROR: <filename>.(sv|v) not found"
+    exit 1
+elif [ ! -d  "${BASH_ARGV[0]}" ]
+then :
+    echo "ERROR: DESTINATION not found"
+    exit 1
+fi
+
+
+OBJ_TMP=$(mktemp -d)
+SOURCES="${@:1:$#-1}"
+DESTINATION="${BASH_ARGV[0]}"
+
+if ! verilator ${IDIR} -Wno-lint -Mdir ${OBJ_TMP} -cc ${SOURCES} ;
+then :
+    echo "ERROR: Verilator errored out"
+    rm -rf $OBJ_TMP
+    exit 1
+fi
+
+grep -Eoh "[-_\.\/[:alnum:]]*\.(v|sv)" ${OBJ_TMP}/V*__ver.d | xargs -I F cp -v F ${DESTINATION}
+rm -rf $OBJ_TMP
