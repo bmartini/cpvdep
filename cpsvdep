@@ -5,7 +5,7 @@ set -o errexit
 function print_usage() {
     echo "
 Usage:
-    $0 [OPTION] [<explicit_dependencies>.(sv|v)] <filename>.(sv|v) DESTINATION
+    $0 [OPTION] [<explicit_dependencies>.(sv|svh|v|vh)] <filename>.(sv|v) DESTINATION
 
 Description:
     Script to copy a SystemVerilog file and its dependencies. The script uses
@@ -63,5 +63,5 @@ then :
     exit 1
 fi
 
-grep -Eoh "[-_\.\/[:alnum:]]*\.(v|sv)" ${OBJ_TMP}/V*__ver.d | xargs -I F cp -v F ${DESTINATION}
+grep -Eoh "[-_\.\/[:alnum:]]*\.(v|vh|sv|svh)" ${OBJ_TMP}/V*__ver.d | xargs -I F cp -v F ${DESTINATION}
 rm -rf $OBJ_TMP
